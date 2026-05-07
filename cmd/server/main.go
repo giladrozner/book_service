@@ -1,11 +1,10 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"time"
+	"net/http"
 
 	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/gin-gonic/gin"
 
 	"github.com/giladrozner/book_service/internal/book"
 	"github.com/giladrozner/book_service/internal/config"
@@ -21,28 +20,16 @@ func main() {
 		panic(err)
 	}
 
-	repo := book.NewESRepository(esClient, cfg.ESTimeout())
-	ctx := context.Background()
+	bookRepo := book.NewESRepository(esClient, cfg.ESTimeout())
+	bookHandler := book.NewHandler(bookRepo)
 
-	id, err := repo.Add(ctx, book.Book{
-		Title:       "Smoke Test",
-		AuthorName:  "Test Author",
-		Price:       1.23,
-		PublishDate: time.Now(),
+	engine := gin.Default()
+	engine.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"msg": "pong"})
 	})
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("added id:", id)
+	bookHandler.Register(engine)
 
-	got, err := repo.Get(ctx, id)
-	if err != nil {
+	if err := engine.Run(":8080"); err != nil {
 		panic(err)
 	}
-	fmt.Printf("got: %+v\n", got)
-
-	if err := repo.Delete(ctx, id); err != nil {
-		panic(err)
-	}
-	fmt.Println("deleted ok")
 }
