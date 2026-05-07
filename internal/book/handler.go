@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,7 +33,7 @@ type createBookRequest struct {
 	AuthorName     string    `json:"author_name" binding:"required"`
 	Price          float64   `json:"price"`
 	EbookAvailable *bool     `json:"ebook_available"`
-	PublishDate    time.Time `json:"publish_date" binding:"required"`
+	PublishDate    string    `json:"publish_date" binding:"required"`
 }
 
 func (h *Handler) create(c *gin.Context) {
