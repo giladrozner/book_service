@@ -1,4 +1,4 @@
-# book_service
+# Library_service
 
 A Go HTTP service that manages a book inventory backed by Elasticsearch, with Redis-based activity tracking.
 
