@@ -1,12 +1,14 @@
-package activity
+package service
 
 import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/giladrozner/book_service/pkg/activity"
 )
 
-func Middleware(repo Repository) gin.HandlerFunc {
+func ActivityMiddleware(repo activity.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next() // run the actual handler first
 
@@ -20,7 +22,7 @@ func Middleware(repo Repository) gin.HandlerFunc {
 		}
 		method := c.Request.Method
 
-		if err := repo.Record(c.Request.Context(), username, Action{
+		if err := repo.Record(c.Request.Context(), username, activity.Action{
 			Method: method,
 			Route:  route,
 		}); err != nil {

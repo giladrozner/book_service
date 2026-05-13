@@ -1,4 +1,4 @@
-package book
+package service
 
 import (
 	"errors"
@@ -6,43 +6,32 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
 	"github.com/gin-gonic/gin"
+
+	"github.com/giladrozner/book_service/pkg/book"
+	"github.com/giladrozner/book_service/pkg/config"
 )
 
-type Handler struct {
-	repo Repository
-}
-
-func NewHandler(repo Repository) *Handler {
-	return &Handler{repo: repo}
-}
-
-// gin.IRouter accepts both *gin.Engine and *gin.RouterGroup, so this works
-// whether we attach to the root engine or to a sub-group with middleware.
-func (h *Handler) Register(r gin.IRouter) {
-	r.POST("/books", h.create)
-	r.GET("/books/:id", h.get)
-	r.PUT("/books/:id", h.updateTitle)
-	r.DELETE("/books/:id", h.delete)
-	r.GET("/search", h.search)
-	r.GET("/store", h.storeStats)
-}
-
 type createBookRequest struct {
-	Title          string    `json:"title" binding:"required"`
-	AuthorName     string    `json:"author_name" binding:"required"`
-	Price          float64   `json:"price"`
-	EbookAvailable *bool     `json:"ebook_available"`
-	PublishDate    string    `json:"publish_date" binding:"required"`
+	Title          string  `json:"title" binding:"required"`
+	AuthorName     string  `json:"author_name" binding:"required"`
+	Price          float64 `json:"price"`
+	EbookAvailable *bool   `json:"ebook_available"`
+	PublishDate    string  `json:"publish_date" binding:"required"`
 }
 
-func (h *Handler) create(c *gin.Context) {
+type updateTitleRequest struct {
+	Title string `json:"title" binding:"required"`
+}
+
+func CreateBook(c *gin.Context) {
 	var req createBookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	id, err := h.repo.Add(c.Request.Context(), Book{
+	id, err := config.BookRepo.Add(c.Request.Context(), book.Book{
 		Title:          req.Title,
 		AuthorName:     req.AuthorName,
 		Price:          req.Price,
@@ -57,10 +46,10 @@ func (h *Handler) create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func (h *Handler) get(c *gin.Context) {
+func GetBook(c *gin.Context) {
 	id := c.Param("id")
-	b, err := h.repo.Get(c.Request.Context(), id)
-	if errors.Is(err, ErrNotFound) {
+	b, err := config.BookRepo.Get(c.Request.Context(), id)
+	if errors.Is(err, book.ErrNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
 		return
 	}
@@ -72,19 +61,15 @@ func (h *Handler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, b)
 }
 
-type updateTitleRequest struct {
-	Title string `json:"title" binding:"required"`
-}
-
-func (h *Handler) updateTitle(c *gin.Context) {
+func UpdateBook(c *gin.Context) {
 	id := c.Param("id")
 	var req updateTitleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err := h.repo.UpdateTitle(c.Request.Context(), id, req.Title)
-	if errors.Is(err, ErrNotFound) {
+	err := config.BookRepo.UpdateTitle(c.Request.Context(), id, req.Title)
+	if errors.Is(err, book.ErrNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
 		return
 	}
@@ -96,10 +81,10 @@ func (h *Handler) updateTitle(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }
 
-func (h *Handler) delete(c *gin.Context) {
+func DeleteBook(c *gin.Context) {
 	id := c.Param("id")
-	err := h.repo.Delete(c.Request.Context(), id)
-	if errors.Is(err, ErrNotFound) {
+	err := config.BookRepo.Delete(c.Request.Context(), id)
+	if errors.Is(err, book.ErrNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
 		return
 	}
@@ -111,8 +96,8 @@ func (h *Handler) delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *Handler) search(c *gin.Context) {
-	var crit SearchCriteria
+func Search(c *gin.Context) {
+	var crit book.SearchCriteria
 	if t := c.Query("title"); t != "" {
 		crit.Title = &t
 	}
@@ -134,7 +119,7 @@ func (h *Handler) search(c *gin.Context) {
 			}
 		}
 	}
-	results, err := h.repo.Search(c.Request.Context(), crit)
+	results, err := config.BookRepo.Search(c.Request.Context(), crit)
 	if err != nil {
 		log.Printf("search error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
@@ -143,12 +128,27 @@ func (h *Handler) search(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
 
-func (h *Handler) storeStats(c *gin.Context) {
-	books, authors, err := h.repo.StoreStats(c.Request.Context())
+func StoreStats(c *gin.Context) {
+	books, authors, err := config.BookRepo.StoreStats(c.Request.Context())
 	if err != nil {
 		log.Printf("store error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"books": books, "authors": authors})
+}
+
+func Activity(c *gin.Context) {
+	username := c.Query("username")
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username required"})
+		return
+	}
+	actions, err := config.ActivityRepo.Recent(c.Request.Context(), username, 3)
+	if err != nil {
+		log.Printf("recent error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"actions": actions})
 }

@@ -10,7 +10,7 @@ Built with [gin-gonic](https://github.com/gin-gonic/gin).
 
 ```bash
 export ES_URL="http://your-es-host:9200"
-go run ./cmd/server
+go run ./cmd/service
 ```
 
 Server listens on port **8080**.
@@ -104,17 +104,18 @@ Activity is stored in Redis with a 24-hour TTL. The `/activity` route itself is 
 Follows the **Repository pattern** — all storage logic is isolated behind interfaces, keeping HTTP handlers independent of the underlying database.
 
 ```
-cmd/server/main.go
-internal/
+cmd/service/main.go
+pkg/
   config/                   ← env-based configuration
   book/
     model.go                ← Book struct
     repository.go           ← Repository interface
     es_repository.go        ← Elasticsearch implementation
-    handler.go              ← HTTP handlers + route registration
   activity/
     repository.go           ← Repository interface
     redis_repository.go     ← Redis implementation
-    middleware.go           ← auto-records every tracked request
-    handler.go              ← GET /activity handler
+  service/                  ← HTTP layer (routes, handlers, middleware)
+    routes.go
+    handlers.go
+    middleware.go
 ```
