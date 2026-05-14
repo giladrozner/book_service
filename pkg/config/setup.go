@@ -1,11 +1,10 @@
 package config
 
 import (
-	"github.com/elastic/go-elasticsearch/v7"
-	"github.com/redis/go-redis/v9"
-
 	"github.com/giladrozner/book_service/pkg/activity"
 	"github.com/giladrozner/book_service/pkg/book"
+	"github.com/giladrozner/book_service/pkg/connectors/elastic"
+	"github.com/giladrozner/book_service/pkg/connectors/redis"
 )
 
 var (
@@ -16,18 +15,12 @@ var (
 func Setup() error {
 	cfg := Load()
 
-	esClient, err := elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{cfg.ESURL},
-	})
+	esClient, err := elastic.NewClient(cfg.ESURL)
 	if err != nil {
 		return err
 	}
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:         cfg.RedisURL,
-		ReadTimeout:  cfg.RedisReadTimeout(),
-		WriteTimeout: cfg.RedisWriteTimeout(),
-	})
+	redisClient := redis.NewClient(cfg.RedisURL, cfg.RedisReadTimeout(), cfg.RedisWriteTimeout())
 
 	BookRepo = book.NewESRepository(esClient, cfg.ESTimeout())
 	ActivityRepo = activity.NewRedisRepository(redisClient)
