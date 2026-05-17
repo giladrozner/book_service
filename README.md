@@ -106,10 +106,14 @@ Follows the **Repository pattern** — all storage logic is isolated behind inte
 ```
 cmd/service/main.go
 pkg/
-  config/                       ← env-based configuration + Setup()
-  connectors/                   ← raw client setup (one place per backend)
-    elastic/client.go           ← Elasticsearch client constructor
-    redis/client.go             ← Redis client constructor
+  config/
+    config.go                   ← env-based configuration
+    consts.go                   ← all constants (server, ES, Redis, error messages)
+    structs.go                  ← shared types (HttpError)
+    setup.go                    ← builds raw ES + Redis clients
+  connectors/                   ← raw client constructors per backend
+    elastic/client.go
+    redis/client.go
   book/
     model.go                    ← Book struct
     repository.go               ← Repository interface
@@ -117,9 +121,12 @@ pkg/
   activity/
     repository.go               ← Repository interface
     redis_repository.go         ← Redis implementation
+  utilities/
+    utils.go                    ← ES error parsing, field-level validation helpers
   service/                      ← HTTP layer
-    routes.go
-    handlers.go
+    setup.go                    ← wires BookRepo and ActivityRepo
+    routes.go                   ← URL list
+    handlers.go                 ← handler functions
     middleware/
       activity_middleware/
         middleware.go           ← records last 3 actions per user
