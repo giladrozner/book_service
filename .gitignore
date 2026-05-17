@@ -1,0 +1,13 @@
+# Compiled binaries
+/server
+/book_service
+*.exe
+
+# Editor/IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Test coverage
+*.out
+coverage.txt
