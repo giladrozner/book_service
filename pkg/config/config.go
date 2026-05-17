@@ -4,8 +4,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/giladrozner/book_service/pkg/consts"
 )
 
 type Config struct {
@@ -18,11 +16,11 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		ESURL:               getenv("ES_URL", consts.DefaultESURL),
-		RedisURL:            getenv("REDIS_URL", consts.DefaultRedisURL),
-		ESTimeoutMs:         getenvInt("ES_TIMEOUT_MS", consts.DefaultESTimeoutMs),
-		RedisReadTimeoutMs:  getenvInt("REDIS_READ_TIMEOUT_MS", consts.DefaultRedisReadTimeoutMs),
-		RedisWriteTimeoutMs: getenvInt("REDIS_WRITE_TIMEOUT_MS", consts.DefaultRedisWriteTimeoutMs),
+		ESURL:               getenv("ES_URL", DefaultESURL),
+		RedisURL:            getenv("REDIS_URL", DefaultRedisURL),
+		ESTimeoutMs:         getenvInt("ES_TIMEOUT_MS", DefaultESTimeoutMs),
+		RedisReadTimeoutMs:  getenvInt("REDIS_READ_TIMEOUT_MS", DefaultRedisReadTimeoutMs),
+		RedisWriteTimeoutMs: getenvInt("REDIS_WRITE_TIMEOUT_MS", DefaultRedisWriteTimeoutMs),
 	}
 }
 

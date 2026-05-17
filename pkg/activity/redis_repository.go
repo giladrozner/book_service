@@ -7,7 +7,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/giladrozner/book_service/pkg/consts"
+	"github.com/giladrozner/book_service/pkg/config"
 )
 
 type RedisRepository struct {
@@ -21,7 +21,7 @@ func NewRedisRepository(client *redis.Client) *RedisRepository {
 var _ Repository = (*RedisRepository)(nil)
 
 func (r *RedisRepository) key(username string) string {
-	return fmt.Sprintf(consts.ActivityKeyPrefix, username)
+	return fmt.Sprintf(config.ActivityKeyPrefix, username)
 }
 
 func (r *RedisRepository) Record(ctx context.Context, username string, action Action) error {
@@ -33,8 +33,8 @@ func (r *RedisRepository) Record(ctx context.Context, username string, action Ac
 	key := r.key(username)
 	pipe := r.client.Pipeline()
 	pipe.LPush(bg, key, string(body))
-	pipe.LTrim(bg, key, 0, consts.ActivityMaxItems-1)
-	pipe.Expire(bg, key, consts.ActivityTTL)
+	pipe.LTrim(bg, key, 0, config.ActivityMaxItems-1)
+	pipe.Expire(bg, key, config.ActivityTTL)
 	if _, err = pipe.Exec(bg); err != nil {
 		return fmt.Errorf("record activity for %s: %w", username, err)
 	}

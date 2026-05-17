@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 
-	"github.com/giladrozner/book_service/pkg/consts"
+	"github.com/giladrozner/book_service/pkg/config"
 )
 
 type ESRepository struct {
@@ -35,7 +35,7 @@ func (r *ESRepository) Add(ctx context.Context, b Book) (string, error) {
 		return "", fmt.Errorf("marshal book: %w", err)
 	}
 	res, err := esapi.IndexRequest{
-		Index: consts.BooksIndex,
+		Index: config.BooksIndex,
 		Body:  bytes.NewReader(body),
 	}.Do(ctx, r.client)
 	if err != nil {
@@ -58,7 +58,7 @@ func (r *ESRepository) Get(ctx context.Context, id string) (Book, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
-	res, err := esapi.GetRequest{Index: consts.BooksIndex, DocumentID: id}.Do(ctx, r.client)
+	res, err := esapi.GetRequest{Index: config.BooksIndex, DocumentID: id}.Do(ctx, r.client)
 	if err != nil {
 		return Book{}, fmt.Errorf("get book %s: %w", id, err)
 	}
@@ -87,7 +87,7 @@ func (r *ESRepository) UpdateTitle(ctx context.Context, id, newTitle string) err
 		return fmt.Errorf("marshal update: %w", err)
 	}
 	res, err := esapi.UpdateRequest{
-		Index:      consts.BooksIndex,
+		Index:      config.BooksIndex,
 		DocumentID: id,
 		Body:       bytes.NewReader(body),
 	}.Do(ctx, r.client)
@@ -108,7 +108,7 @@ func (r *ESRepository) Delete(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
-	res, err := esapi.DeleteRequest{Index: consts.BooksIndex, DocumentID: id}.Do(ctx, r.client)
+	res, err := esapi.DeleteRequest{Index: config.BooksIndex, DocumentID: id}.Do(ctx, r.client)
 	if err != nil {
 		return fmt.Errorf("delete book %s: %w", id, err)
 	}
@@ -153,7 +153,7 @@ func (r *ESRepository) Search(ctx context.Context, c SearchCriteria) ([]BookWith
 		return nil, fmt.Errorf("marshal search: %w", err)
 	}
 	res, err := esapi.SearchRequest{
-		Index: []string{consts.BooksIndex},
+		Index: []string{config.BooksIndex},
 		Body:  bytes.NewReader(body),
 	}.Do(ctx, r.client)
 	if err != nil {
@@ -186,7 +186,7 @@ func (r *ESRepository) StoreStats(ctx context.Context) (int, int, error) {
 	defer cancel()
 
 	res, err := esapi.SearchRequest{
-		Index: []string{consts.BooksIndex},
+		Index: []string{config.BooksIndex},
 		Body:  bytes.NewReader([]byte(`{"size":0,"aggs":{"distinct_authors":{"cardinality":{"field":"author_name.keyword"}}}}`)),
 	}.Do(ctx, r.client)
 	if err != nil {

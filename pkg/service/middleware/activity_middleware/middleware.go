@@ -6,13 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/giladrozner/book_service/pkg/activity"
+	"github.com/giladrozner/book_service/pkg/config"
 )
 
 func Middleware(repo activity.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next() // run the actual handler first
 
-		username := c.Query("username")
+		username := c.Query(config.QueryParamUsername)
 		if username == "" {
 			return
 		}

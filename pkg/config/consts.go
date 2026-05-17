@@ -1,4 +1,4 @@
-package consts
+package config
 
 import "time"
 
@@ -20,4 +20,15 @@ const (
 	DefaultESTimeoutMs         = 5000
 	DefaultRedisReadTimeoutMs  = 2000
 	DefaultRedisWriteTimeoutMs = 2000
+
+	// Error messages
+	ErrMsgInternal         = "internal error"
+	ErrMsgBookNotFound     = "book not found"
+	ErrMsgUsernameRequired = "username required"
+
+	// Query parameters
+	QueryParamTitle      = "title"
+	QueryParamAuthorName = "author_name"
+	QueryParamPriceRange = "price_range"
+	QueryParamUsername   = "username"
 )

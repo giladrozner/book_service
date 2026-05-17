@@ -5,18 +5,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/giladrozner/book_service/pkg/config"
 	"github.com/giladrozner/book_service/pkg/service/middleware/activity_middleware"
 )
 
 func Routes(router *gin.Engine) {
+	Setup()
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"msg": "pong"})
 	})
 
 	// Tracked routes — wrapped in the activity-recording middleware
 	tracked := router.Group("/")
-	tracked.Use(activity_middleware.Middleware(config.ActivityRepo))
+	tracked.Use(activity_middleware.Middleware(ActivityRepo))
 	{
 		tracked.POST("/books", CreateBook)
 		tracked.GET("/books/:id", GetBook)
