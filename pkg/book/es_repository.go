@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v7"
@@ -63,9 +62,6 @@ func (r *ESRepository) Get(ctx context.Context, id string) (Book, error) {
 		return Book{}, fmt.Errorf("get book %s: %w", id, err)
 	}
 	defer res.Body.Close()
-	if res.StatusCode == http.StatusNotFound {
-		return Book{}, ErrNotFound
-	}
 	if res.IsError() {
 		return Book{}, esError(res)
 	}
@@ -95,9 +91,6 @@ func (r *ESRepository) UpdateTitle(ctx context.Context, id, newTitle string) err
 		return fmt.Errorf("update title %s: %w", id, err)
 	}
 	defer res.Body.Close()
-	if res.StatusCode == http.StatusNotFound {
-		return ErrNotFound
-	}
 	if res.IsError() {
 		return esError(res)
 	}
@@ -113,9 +106,6 @@ func (r *ESRepository) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("delete book %s: %w", id, err)
 	}
 	defer res.Body.Close()
-	if res.StatusCode == http.StatusNotFound {
-		return ErrNotFound
-	}
 	if res.IsError() {
 		return esError(res)
 	}
@@ -136,10 +126,10 @@ func (r *ESRepository) Search(ctx context.Context, c SearchCriteria) ([]BookWith
 	if c.PriceMin != nil || c.PriceMax != nil {
 		rng := map[string]any{}
 		if c.PriceMin != nil {
-			rng["gte"] = *c.PriceMin
+			rng[config.ESRangeGTE] = *c.PriceMin
 		}
 		if c.PriceMax != nil {
-			rng["lte"] = *c.PriceMax
+			rng[config.ESRangeLTE] = *c.PriceMax
 		}
 		must = append(must, map[string]any{"range": map[string]any{"price": rng}})
 	}
@@ -214,7 +204,9 @@ func (r *ESRepository) StoreStats(ctx context.Context) (int, int, error) {
 	return resp.Hits.Total.Value, resp.Aggregations.DistinctAuthors.Value, nil
 }
 
+// esError wraps an Elasticsearch error response into a Go error.
+// The format "Error %d: ..." allows ParseElasticsearchErrorCode to extract the status code.
 func esError(res *esapi.Response) error {
 	body, _ := io.ReadAll(res.Body)
-	return fmt.Errorf("es error %d: %s", res.StatusCode, string(body))
+	return fmt.Errorf("Error %d: %s", res.StatusCode, string(body))
 }

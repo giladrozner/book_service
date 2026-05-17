@@ -1,11 +1,6 @@
 package book
 
-import (
-	"context"
-	"errors"
-)
-
-var ErrNotFound = errors.New("book not found")
+import "context"
 
 type SearchCriteria struct {
 	Title      *string

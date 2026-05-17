@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,12 +9,13 @@ import (
 
 	"github.com/giladrozner/book_service/pkg/book"
 	"github.com/giladrozner/book_service/pkg/config"
+	"github.com/giladrozner/book_service/pkg/utilities"
 )
 
 type createBookRequest struct {
 	Title          string  `json:"title" binding:"required"`
 	AuthorName     string  `json:"author_name" binding:"required"`
-	Price          float64 `json:"price"`
+	Price          float64 `json:"price" binding:"required"`
 	EbookAvailable *bool   `json:"ebook_available"`
 	PublishDate    string  `json:"publish_date" binding:"required"`
 }
@@ -28,7 +27,7 @@ type updateTitleRequest struct {
 func CreateBook(c *gin.Context) {
 	var req createBookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{config.ErrorField: utilities.GetAddBookValidationErrors(err)})
 		return
 	}
 	id, err := BookRepo.Add(c.Request.Context(), book.Book{
@@ -39,58 +38,45 @@ func CreateBook(c *gin.Context) {
 		PublishDate:    req.PublishDate,
 	})
 	if err != nil {
-		log.Printf("create error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.ErrMsgInternal})
+		httpErr := utilities.ParseElasticsearchErrorCode(err)
+		c.JSON(httpErr.Code, gin.H{config.ErrorField: config.ElasticsearchErrorMap[httpErr.Code]})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"id": id})
+	c.JSON(http.StatusCreated, gin.H{config.ParamID: id})
 }
 
 func GetBook(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param(config.ParamID)
 	b, err := BookRepo.Get(c.Request.Context(), id)
-	if errors.Is(err, book.ErrNotFound) {
-		c.JSON(http.StatusNotFound, gin.H{"error": config.ErrMsgBookNotFound})
-		return
-	}
 	if err != nil {
-		log.Printf("get error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.ErrMsgInternal})
+
+		httpErr := utilities.ParseElasticsearchErrorCode(err)
+		c.JSON(httpErr.Code, gin.H{config.ErrorField: config.ElasticsearchErrorMap[httpErr.Code]})
 		return
 	}
 	c.JSON(http.StatusOK, b)
 }
 
 func UpdateBook(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param(config.ParamID)
 	var req updateTitleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{config.ErrorField: utilities.GetUpdateBookValidationErrors(err)})
 		return
 	}
-	err := BookRepo.UpdateTitle(c.Request.Context(), id, req.Title)
-	if errors.Is(err, book.ErrNotFound) {
-		c.JSON(http.StatusNotFound, gin.H{"error": config.ErrMsgBookNotFound})
+	if err := BookRepo.UpdateTitle(c.Request.Context(), id, req.Title); err != nil {
+		httpErr := utilities.ParseElasticsearchErrorCode(err)
+		c.JSON(httpErr.Code, gin.H{config.ErrorField: config.ElasticsearchErrorMap[httpErr.Code]})
 		return
 	}
-	if err != nil {
-		log.Printf("update error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.ErrMsgInternal})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"status": "updated"})
+	c.JSON(http.StatusOK, gin.H{config.MessageField: config.SuccessBookUpdated})
 }
 
 func DeleteBook(c *gin.Context) {
-	id := c.Param("id")
-	err := BookRepo.Delete(c.Request.Context(), id)
-	if errors.Is(err, book.ErrNotFound) {
-		c.JSON(http.StatusNotFound, gin.H{"error": config.ErrMsgBookNotFound})
-		return
-	}
-	if err != nil {
-		log.Printf("delete error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.ErrMsgInternal})
+	id := c.Param(config.ParamID)
+	if err := BookRepo.Delete(c.Request.Context(), id); err != nil {
+		httpErr := utilities.ParseElasticsearchErrorCode(err)
+		c.JSON(httpErr.Code, gin.H{config.ErrorField: config.ElasticsearchErrorMap[httpErr.Code]})
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -121,8 +107,8 @@ func Search(c *gin.Context) {
 	}
 	results, err := BookRepo.Search(c.Request.Context(), crit)
 	if err != nil {
-		log.Printf("search error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.ErrMsgInternal})
+		httpErr := utilities.ParseElasticsearchErrorCode(err)
+		c.JSON(httpErr.Code, gin.H{config.ErrorField: config.ElasticsearchErrorMap[httpErr.Code]})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"results": results})
@@ -131,24 +117,23 @@ func Search(c *gin.Context) {
 func StoreStats(c *gin.Context) {
 	books, authors, err := BookRepo.StoreStats(c.Request.Context())
 	if err != nil {
-		log.Printf("store error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.ErrMsgInternal})
+		httpErr := utilities.ParseElasticsearchErrorCode(err)
+		c.JSON(httpErr.Code, gin.H{config.ErrorField: config.ElasticsearchErrorMap[httpErr.Code]})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"books": books, "authors": authors})
+	c.JSON(http.StatusOK, gin.H{config.BookCountField: books, config.DistinctAuthorsField: authors})
 }
 
 func Activity(c *gin.Context) {
 	username := c.Query(config.QueryParamUsername)
 	if username == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": config.ErrMsgUsernameRequired})
+		c.JSON(http.StatusBadRequest, gin.H{config.ErrorField: config.ErrMsgUsernameRequired})
 		return
 	}
 	actions, err := ActivityRepo.Recent(c.Request.Context(), username, config.ActivityMaxItems)
 	if err != nil {
-		log.Printf("recent error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.ErrMsgInternal})
+		c.JSON(http.StatusInternalServerError, gin.H{config.ErrorField: config.ErrMsgInternal})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"actions": actions})
+	c.JSON(http.StatusOK, gin.H{config.ActionsField: actions})
 }

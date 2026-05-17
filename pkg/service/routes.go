@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/giladrozner/book_service/pkg/config"
 	"github.com/giladrozner/book_service/pkg/service/middleware/activity_middleware"
 )
 
@@ -19,9 +20,9 @@ func Routes(router *gin.Engine) {
 	tracked.Use(activity_middleware.Middleware(ActivityRepo))
 	{
 		tracked.POST("/books", CreateBook)
-		tracked.GET("/books/:id", GetBook)
-		tracked.PUT("/books/:id", UpdateBook)
-		tracked.DELETE("/books/:id", DeleteBook)
+		tracked.GET("/books/:"+config.ParamID, GetBook)
+		tracked.PUT("/books/:"+config.ParamID, UpdateBook)
+		tracked.DELETE("/books/:"+config.ParamID, DeleteBook)
 		tracked.GET("/search", Search)
 		tracked.GET("/store", StoreStats)
 	}
