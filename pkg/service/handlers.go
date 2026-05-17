@@ -11,6 +11,7 @@ import (
 
 	"github.com/giladrozner/book_service/pkg/book"
 	"github.com/giladrozner/book_service/pkg/config"
+	"github.com/giladrozner/book_service/pkg/consts"
 )
 
 type createBookRequest struct {
@@ -144,7 +145,7 @@ func Activity(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username required"})
 		return
 	}
-	actions, err := config.ActivityRepo.Recent(c.Request.Context(), username, 3)
+	actions, err := config.ActivityRepo.Recent(c.Request.Context(), username, consts.ActivityMaxItems)
 	if err != nil {
 		log.Printf("recent error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})

@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/redis/go-redis/v9"
-)
 
-const activityTTL = 24 * time.Hour
+	"github.com/giladrozner/book_service/pkg/consts"
+)
 
 type RedisRepository struct {
 	client *redis.Client
@@ -22,7 +21,7 @@ func NewRedisRepository(client *redis.Client) *RedisRepository {
 var _ Repository = (*RedisRepository)(nil)
 
 func (r *RedisRepository) key(username string) string {
-	return fmt.Sprintf("activity:%s", username)
+	return fmt.Sprintf(consts.ActivityKeyPrefix, username)
 }
 
 func (r *RedisRepository) Record(ctx context.Context, username string, action Action) error {
@@ -34,8 +33,8 @@ func (r *RedisRepository) Record(ctx context.Context, username string, action Ac
 	key := r.key(username)
 	pipe := r.client.Pipeline()
 	pipe.LPush(bg, key, string(body))
-	pipe.LTrim(bg, key, 0, 2)
-	pipe.Expire(bg, key, activityTTL)
+	pipe.LTrim(bg, key, 0, consts.ActivityMaxItems-1)
+	pipe.Expire(bg, key, consts.ActivityTTL)
 	if _, err = pipe.Exec(bg); err != nil {
 		return fmt.Errorf("record activity for %s: %w", username, err)
 	}
